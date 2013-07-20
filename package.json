@@ -1,0 +1,15 @@
+{
+  "name": "voter",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "express": "*",
+    "hjs": "*",
+    "node-foursquare": "*",
+    "sendgrid": "0.2.8",
+    "socket.io": "*"
+  },
+  "engines": {
+    "node": "0.10.*"
+  }
+}

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Where Should I Go?</title>
+
+		<link rel="stylesheet" href="css/normalize.min.css">
+		<link href='http://fonts.googleapis.com/css?family=Roboto+Slab:400,700' rel='stylesheet' type='text/css'>
+		<link rel="stylesheet" href="css/main.css">
+	</head>
+	<body>
+		<header>
+			<img src="img/sendgrid-logo.png" alt="SendGrid" id="logo">
+			<!-- You'll need to customize the email one of your domains and setup SendGrid's Parse Webhook to use it. -->
+			<h1>Email Your Choice To: <a href="mailto:email@example.com" class="email">email@example.com</a></h1>
+		</header>
+
+		<!-- This uses Mustache Templating Language (interpreted via Hogan.js) to list all venues. -->
+		<ul id="poll">
+		{{#venues}}
+			<li id="venue{{visualId}}" class="clearfix">
+				<div class="poll-label clearfix">
+					<div class="venue-info">
+						<div class="venue-name">{{venue.name}}</div>
+						<span class="venue-address">{{venue.location.address}}, {{venue.location.city}}, {{venue.location.state}}</span>
+					</div>
+					<span class="venue-id">{{visualId}}</span>
+				</div>
+				<div class="poll">0</div>
+			</li>
+		{{/venues}}
+		</ul>
+
+		<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+
+		<!-- Load jQuery if Google is out of commission. (You may also want to hunker down in a bunker, because the world, may well be ending) -->
+		<script>window.jQuery || document.write('<script src="js/vendor/jquery-1.10.2.min.js"><\/script>')</script>
+
+		<!-- Load Socket.io's frontend stuff. -->
+		<script src="/socket.io/socket.io.js"></script>
+		<script>
+			// This variable will contain all the letters and numbers of votes.
+			var pollData = {};
+
+			// Here we have a list of all votes as they are sent to Socket.io
+			var votes = {};
+			
+			// This cleans up the vote a little bit and determines what letter it is.
+			function getVote (data) {
+				return data.subject.toUpperCase().trim()[0];
+			}
+
+			// Connect to Socket.io
+			var socket = io.connect('/');
+			socket.on('email', function (data) {
+
+				// Standardize the vote, so we can reliably tally it.
+				var vote = getVote(data);
+
+				// Standarize the email a little bit (to prevent voter fraud)
+				var voterEmail = data.from.toLowerCase();
+
+				// Now we need to make sure the character we're calling the vote is actually an option.
+				if(typeof pollData[vote] == "number"){
+					
+					// If everything looks good up the number of votes by one.
+					pollData[vote]++;
+
+					// Now we need to prevent voter fraud. We check to see if the email has already voted.
+					if(typeof votes[voterEmail] != "undefined"){
+
+						// If the email has already voted remove their previous vote.
+						pollData[getVote(votes[voterEmail])]--;
+					}
+
+					// Now, log the vote information.
+					votes[voterEmail] = data;
+
+					// Now that we have the vote tallied, let's make the view reflect it.
+					
+					// First initialize a total number of votes.
+					var pollTotal = 0;
+
+					// Go through each venue and total the number of votes they've all recieved.
+					$.each(pollData, function(key, value) {
+						pollTotal += value;
+					});
+
+					// Finally change the bars & values to reflect the data.
+					$.each(pollData, function(key, value) {
+						$("#venue" + key + " .poll").text(value).animate({width: value/pollTotal*maxWidth}, 400);
+					});
+				}
+
+			});
+
+			// Make sure the bars never exceed the window's width.
+			$(window).resize(function () {
+				maxWidth = $("#poll li").innerWidth()*.9 + - 350;
+			});
+
+			// jQuery Intialization Stuff
+			$(function () {
+				// Initialize the variable that stores all the poll data. 
+				$(".venue-id").each(function () {
+					pollData[$(this).text()] = 0;
+				});
+
+				// Call $(window).resize() to determine the maximum width of a bar.
+				$(window).resize();
+			});
+		</script>
+	</body>
+</html>
